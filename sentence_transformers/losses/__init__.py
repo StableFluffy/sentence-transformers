@@ -29,6 +29,7 @@ from .MSELoss import MSELoss
 from .MultipleNegativesRankingLoss import MultipleNegativesRankingLoss
 from .MultipleNegativesSymmetricRankingLoss import MultipleNegativesSymmetricRankingLoss
 from .OnlineContrastiveLoss import OnlineContrastiveLoss
+from .OptimizedRerankerCachedGISTEmbedLoss import OptimizedRerankerCachedGISTEmbedLoss
 from .RerankerCachedGISTEmbedLoss import RerankerCachedGISTEmbedLoss
 from .SoftmaxLoss import SoftmaxLoss
 from .TripletLoss import TripletDistanceMetric, TripletLoss
@@ -65,4 +66,5 @@ __all__ = [
     "BatchSemiHardTripletLoss",
     "BatchAllTripletLoss",
     "RerankerCachedGISTEmbedLoss",
+    "OptimizedRerankerCachedGISTEmbedLoss",
 ]
