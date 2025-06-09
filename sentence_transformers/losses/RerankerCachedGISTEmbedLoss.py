@@ -95,7 +95,9 @@ class RerankerCachedGISTEmbedLoss(nn.Module):
             show_progress_bar: If True, show progress bar during training
             margin_strategy: Strategy for false negative filtering ("absolute" or "relative")
             margin: Margin value for filtering negatives
-            reranker_batch_size: Batch size for reranker API calls
+            reranker_batch_size: Maximum batch size for each reranker API call. The loss function
+                will automatically split larger requests into multiple batches of this size and
+                combine them into a single batch API request for efficiency.
             instruction: Task instruction for the reranker
             max_length: Maximum token length for reranker
             timeout: Timeout for API calls in seconds
@@ -184,20 +186,42 @@ class RerankerCachedGISTEmbedLoss(nn.Module):
             for doc in documents:
                 pairs.append((query, doc))
 
-        # Process in batches
-        async def process_batches():
-            async with aiohttp.ClientSession() as session:
-                tasks = []
-                for i in range(0, len(pairs), self.reranker_batch_size):
-                    batch = pairs[i : i + self.reranker_batch_size]
-                    tasks.append(self._call_reranker_async(session, batch))
+        # Split into batches and prepare requests
+        batch_requests = []
+        for i in range(0, len(pairs), self.reranker_batch_size):
+            batch = pairs[i : i + self.reranker_batch_size]
+            batch_requests.append({
+                "pairs": batch,
+                "instruction": self.instruction,
+                "max_length": self.max_length,
+            })
 
-                # Run all batches concurrently
-                batch_results = await asyncio.gather(*tasks)
-                return [score for batch in batch_results for score in batch]
+        # Process using batch API
+        async def process_batch_api():
+            async with aiohttp.ClientSession() as session:
+                # Call batch API endpoint
+                async with session.post(
+                    f"{self.reranker_url}/rerank_batch",
+                    json=batch_requests,
+                    timeout=aiohttp.ClientTimeout(total=self.timeout),
+                ) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        # Flatten all scores from batch responses
+                        all_scores = []
+                        for batch_response in data:
+                            all_scores.extend(batch_response["scores"])
+                        return all_scores
+                    else:
+                        # Fallback to individual batch processing if batch API not available
+                        tasks = []
+                        for req in batch_requests:
+                            tasks.append(self._call_reranker_async(session, req["pairs"]))
+                        batch_results = await asyncio.gather(*tasks)
+                        return [score for batch in batch_results for score in batch]
 
         # Run the async function
-        scores = asyncio.run(process_batches())
+        scores = asyncio.run(process_batch_api())
 
         # Reshape to matrix form
         scores_matrix = np.array(scores).reshape(len(queries), len(documents))

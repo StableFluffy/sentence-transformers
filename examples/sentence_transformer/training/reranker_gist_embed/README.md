@@ -74,13 +74,20 @@ python train_with_reranker.py
 
 - `reranker_url`: URL of the reranker API server
 - `mini_batch_size`: Size of mini-batches for gradient caching (affects memory usage)
-- `reranker_batch_size`: Batch size for API calls (affects API throughput)
+- `reranker_batch_size`: Maximum batch size for each API call (splits larger batches automatically)
 - `margin_strategy`: "absolute" or "relative" for false negative filtering
 - `margin`: Threshold for filtering (0.0 = only filter exact matches)
 - `temperature`: Temperature for scaling similarities
 - `instruction`: Task instruction sent to the reranker
 - `max_length`: Maximum token length for reranker
 - `timeout`: API timeout in seconds
+
+### API Usage
+
+The loss function now uses the `/rerank_batch` endpoint for better efficiency:
+- Multiple mini-batches are combined into a single API request (up to `reranker_batch_size`)
+- If the batch API is not available (returns non-200 status), it falls back to individual calls
+- This reduces network overhead and improves throughput
 
 ### Margin Strategies
 

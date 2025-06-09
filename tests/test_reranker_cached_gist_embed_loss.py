@@ -25,10 +25,13 @@ class TestRerankerCachedGISTEmbedLoss(unittest.TestCase):
     @patch("aiohttp.ClientSession.post")
     def test_reranker_call(self, mock_post):
         """Test that the reranker API is called correctly."""
-        # Mock the API response
+        # Mock the batch API response
         mock_response = AsyncMock()
         mock_response.status = 200
-        mock_response.json = AsyncMock(return_value={"scores": [0.9, 0.1, 0.2, 0.8]})
+        # Response format for batch API: list of responses
+        mock_response.json = AsyncMock(return_value=[
+            {"scores": [0.9, 0.1, 0.2, 0.8]}
+        ])
         mock_post.return_value.__aenter__.return_value = mock_response
 
         # Test data
