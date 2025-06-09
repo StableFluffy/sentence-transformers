@@ -77,6 +77,7 @@ class RerankerCachedGISTEmbedLoss(nn.Module):
         instruction: str = "Given a web search query, retrieve relevant passages that answer the query",
         max_length: int = 8192,
         timeout: int = 30,
+        use_simple_batch: bool = True,
     ) -> None:
         """
         This loss combines :class:`CachedGISTEmbedLoss` with a reranker API server instead of a guide model.
@@ -101,6 +102,9 @@ class RerankerCachedGISTEmbedLoss(nn.Module):
             instruction: Task instruction for the reranker
             max_length: Maximum token length for reranker
             timeout: Timeout for API calls in seconds
+            use_simple_batch: If True, uses /rerank_batch_simple endpoint which assumes all
+                requests have the same instruction/max_length for maximum vLLM efficiency.
+                If False, uses /rerank_batch which handles mixed parameters but may be slower.
 
         Example:
             ::
@@ -151,6 +155,7 @@ class RerankerCachedGISTEmbedLoss(nn.Module):
         self.instruction = instruction
         self.max_length = max_length
         self.timeout = timeout
+        self.use_simple_batch = use_simple_batch
 
     def sim_matrix(self, embed1: Tensor, embed2: Tensor) -> Tensor:
         return self.similarity_fct(embed1.unsqueeze(1), embed2.unsqueeze(0))
@@ -199,9 +204,12 @@ class RerankerCachedGISTEmbedLoss(nn.Module):
         # Process using batch API
         async def process_batch_api():
             async with aiohttp.ClientSession() as session:
+                # Choose endpoint based on configuration
+                endpoint = "/rerank_batch_simple" if self.use_simple_batch else "/rerank_batch"
+                
                 # Call batch API endpoint
                 async with session.post(
-                    f"{self.reranker_url}/rerank_batch",
+                    f"{self.reranker_url}{endpoint}",
                     json=batch_requests,
                     timeout=aiohttp.ClientTimeout(total=self.timeout),
                 ) as response:
@@ -433,4 +441,5 @@ class RerankerCachedGISTEmbedLoss(nn.Module):
             "instruction": self.instruction,
             "max_length": self.max_length,
             "timeout": self.timeout,
+            "use_simple_batch": self.use_simple_batch,
         }

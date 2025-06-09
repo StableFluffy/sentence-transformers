@@ -57,6 +57,7 @@ def main():
         max_length=512,  # Maximum token length for reranker
         timeout=30,  # API timeout in seconds
         show_progress_bar=True,
+        use_simple_batch=True,  # Use optimized batch endpoint for better vLLM efficiency
     )
     
     # 4. Define training arguments

@@ -89,6 +89,16 @@ The loss function now uses the `/rerank_batch` endpoint for better efficiency:
 - If the batch API is not available (returns non-200 status), it falls back to individual calls
 - This reduces network overhead and improves throughput
 
+### Server Implementations
+
+1. **Basic Server** (`reranker_server.py`): Original implementation
+2. **Minimal Fix** (`reranker_server_minimal_fix.py`): Basic fixes with proper vLLM batching
+3. **Improved Server** (`reranker_server_improved.py`): Adds caching, metrics, and batch processing
+4. **Optimized Batch** (`reranker_server_optimized_batch.py`): Best vLLM batch utilization with:
+   - `/rerank`: Standard single request endpoint
+   - `/rerank_batch`: Intelligent grouping by instruction/max_length
+   - `/rerank_batch_simple`: Maximum efficiency when all requests share same parameters
+
 ### Margin Strategies
 
 1. **Absolute margin** (`margin_strategy="absolute"`):
